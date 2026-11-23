@@ -1,0 +1,12 @@
+/* Bahía Dorada: High Water — full-viewport canvas, sunset backdrop. */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; background: #0e3a44; overflow: hidden; }
+body { display: flex; align-items: center; justify-content: center; font-family: sans-serif; }
+canvas#game {
+  width: min(100vw, 160vh);
+  height: auto;
+  aspect-ratio: 1280 / 800;
+  background: #1b6f7a;
+  box-shadow: 0 0 60px rgba(255, 154, 60, 0.35);
+  cursor: crosshair;
+}
