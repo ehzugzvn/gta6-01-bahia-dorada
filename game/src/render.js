@@ -26,6 +26,30 @@ export function drawWorld(ctx, G) {
   const b = G.city.beach;
   ctx.fillStyle = COLORS.sand; ctx.fillRect(b.x - cam.x, b.y - cam.y, b.w, b.h);
   ctx.fillStyle = '#7a9e52'; ctx.fillRect(2000 - cam.x, -cam.y, 1200, 1100); // Las Lomas green
+  // ground texture patches (deterministic hash, viewport-culled)
+  ctx.fillStyle = 'rgba(120,84,40,0.13)';
+  for (let gx = Math.floor(cam.x / 150) * 150; gx < cam.x + 1280; gx += 150) for (let gy = Math.floor(cam.y / 150) * 150; gy < cam.y + 800; gy += 150) {
+    const hsh = Math.abs(Math.sin(gx * 12.9898 + gy * 78.233) * 43758.5453) % 1;
+    if (hsh < 0.55) ctx.fillRect(gx - cam.x + hsh * 60, gy - cam.y + hsh * 40, 90, 60);
+  }
+  // building lot paving: a concrete apron under every building fills the block
+  ctx.fillStyle = '#bfae8d';
+  for (const bd of G.city.buildings) {
+    const lx = bd.x - 7 - cam.x, ly = bd.y - 7 - cam.y;
+    if (lx < -180 || ly < -180 || lx > 1420 || ly > 920) continue;
+    ctx.fillRect(lx, ly, bd.w + 14, bd.h + 14);
+  }
+  // Centro plaza paving + fountain (block between the central avenues)
+  ctx.fillStyle = '#d9b98a'; ctx.fillRect(1198 - cam.x, 878 - cam.y, 244, 244);
+  ctx.strokeStyle = 'rgba(120,80,40,0.35)'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    ctx.beginPath(); ctx.moveTo(1198 + i * 61 - cam.x, 878 - cam.y); ctx.lineTo(1198 + i * 61 - cam.x, 1122 - cam.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(1198 - cam.x, 878 + i * 61 - cam.y); ctx.lineTo(1442 - cam.x, 878 + i * 61 - cam.y); ctx.stroke();
+  }
+  // sidewalks: light border slab under every road
+  ctx.fillStyle = '#d8c49a';
+  for (const r of G.city.vRoads) ctx.fillRect(r - ROAD_W / 2 - 9 - cam.x, -cam.y, ROAD_W + 18, WORLD.h);
+  for (const r of G.city.hRoads) ctx.fillRect(-cam.x, r - ROAD_W / 2 - 9 - cam.y, WORLD.w, ROAD_W + 18);
   // roads
   ctx.fillStyle = COLORS.road;
   for (const r of G.city.vRoads) ctx.fillRect(r - ROAD_W / 2 - cam.x, -cam.y, ROAD_W, WORLD.h);
@@ -34,6 +58,39 @@ export function drawWorld(ctx, G) {
   for (const r of G.city.vRoads) { ctx.beginPath(); ctx.moveTo(r - cam.x, -cam.y); ctx.lineTo(r - cam.x, WORLD.h - cam.y); ctx.stroke(); }
   for (const r of G.city.hRoads) { ctx.beginPath(); ctx.moveTo(-cam.x, r - cam.y); ctx.lineTo(WORLD.w - cam.x, r - cam.y); ctx.stroke(); }
   ctx.setLineDash([]);
+  // parking bays along road edges (under the parked cars)
+  for (const s of G.city.parkedSpots) {
+    const x = s.x - cam.x, y = s.y - cam.y;
+    if (x < -60 || x > 1340 || y < -60 || y > 860) continue;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(s.a);
+    ctx.fillStyle = '#454a51'; ctx.fillRect(-26, -14, 52, 28);
+    ctx.strokeStyle = 'rgba(245,215,110,0.8)'; ctx.lineWidth = 2; ctx.strokeRect(-26, -14, 52, 28);
+    ctx.restore();
+  }
+  // ground decor props: stalls / crates / containers / beach umbrellas
+  for (const pr of G.city.props) {
+    const x = pr.x - cam.x, y = pr.y - cam.y;
+    if (x < -80 || x > 1360 || y < -80 || y > 880) continue;
+    if (pr.kind === 'umbrella') {
+      ctx.strokeStyle = '#8a6a34'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 12); ctx.stroke();
+      ctx.fillStyle = pr.color; ctx.beginPath(); ctx.arc(x, y - 13, 15, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(x - 11, y + 5, 22, 6); // towel
+    } else if (pr.kind === 'stall') {
+      ctx.fillStyle = 'rgba(60,20,10,0.3)'; ctx.fillRect(x - pr.w / 2 + 3, y - pr.h / 2 + 4, pr.w, pr.h);
+      ctx.fillStyle = '#8a6a34'; ctx.fillRect(x - pr.w / 2, y - pr.h / 2, pr.w, pr.h);
+      ctx.fillStyle = pr.color; ctx.fillRect(x - pr.w / 2 - 3, y - pr.h / 2 - 6, pr.w + 6, 8); // awning
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      for (let sx = -pr.w / 2 + 4; sx < pr.w / 2 - 4; sx += 9) ctx.fillRect(x + sx, y - 2, 5, 5); // goods
+    } else if (pr.kind === 'crate') {
+      ctx.fillStyle = pr.color; ctx.fillRect(x - pr.w / 2, y - pr.h / 2, pr.w, pr.h);
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 2; ctx.strokeRect(x - pr.w / 2, y - pr.h / 2, pr.w, pr.h);
+    } else if (pr.kind === 'container') {
+      ctx.fillStyle = 'rgba(60,20,10,0.3)'; ctx.fillRect(x - pr.w / 2 + 4, y - pr.h / 2 + 5, pr.w, pr.h);
+      ctx.fillStyle = pr.color; ctx.fillRect(x - pr.w / 2, y - pr.h / 2, pr.w, pr.h);
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2;
+      for (let cx2 = -pr.w / 2 + 8; cx2 < pr.w / 2; cx2 += 11) { ctx.beginPath(); ctx.moveTo(x + cx2, y - pr.h / 2); ctx.lineTo(x + cx2, y + pr.h / 2); ctx.stroke(); }
+    }
+  }
   // causeway bridge
   ctx.fillStyle = '#8a8f96'; ctx.fillRect(2560 - cam.x, 1640 - cam.y, 240, 60);
   // garage pad
@@ -68,6 +125,9 @@ export function drawWorld(ctx, G) {
   // buildings sorted by y for pseudo-3D overlap
   const sorted = [...G.city.buildings].sort((a, b2) => a.y - b2.y);
   for (const bd of sorted) drawBuilding(ctx, bd, cam);
+  // Centro plaza fountain, in the cross-gap of its block
+  ctx.fillStyle = '#3ec6c0'; ctx.beginPath(); ctx.arc(1320 - cam.x, 1000 - cam.y, 15, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e8f6f6'; ctx.beginPath(); ctx.arc(1320 - cam.x, 1000 - cam.y, 6, 0, 7); ctx.fill();
   // Isla Faro lighthouse
   drawLighthouse(ctx, G, cam);
   // objective marker beam
@@ -107,7 +167,7 @@ export function drawWorld(ctx, G) {
   }
   drawHeli(ctx, G, cam);
   // golden-hour tint + vignette
-  ctx.fillStyle = 'rgba(255,140,50,0.08)'; ctx.fillRect(0, 0, 1280, 800);
+  ctx.fillStyle = 'rgba(255,130,40,0.13)'; ctx.fillRect(0, 0, 1280, 800);
   const vg = ctx.createRadialGradient(640, 400, 380, 640, 400, 780);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(20,8,20,0.35)');
   ctx.fillStyle = vg; ctx.fillRect(0, 0, 1280, 800);
@@ -118,7 +178,7 @@ function drawBuilding(ctx, bd, cam) {
   if (x < -180 || y < -180 || x > 1400 || y > 900) return;
   // long golden-hour shadow to the north-east
   ctx.fillStyle = COLORS.shadow;
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + bd.w, y); ctx.lineTo(x + bd.w + bd.tall * 1.6, y - bd.tall); ctx.lineTo(x + bd.tall * 1.6, y - bd.tall); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + bd.w, y); ctx.lineTo(x + bd.w + bd.tall * 2.3, y - bd.tall * 1.4); ctx.lineTo(x + bd.tall * 2.3, y - bd.tall * 1.4); ctx.closePath(); ctx.fill();
   // south wall (extruded)
   ctx.fillStyle = COLORS.wall; ctx.fillRect(x, y + bd.h - bd.tall * 0.5, bd.w, bd.tall * 0.5);
   ctx.fillStyle = 'rgba(255,255,255,0.25)';
@@ -127,6 +187,11 @@ function drawBuilding(ctx, bd, cam) {
   ctx.fillStyle = bd.color; ctx.fillRect(x, y, bd.w, bd.h - bd.tall * 0.5);
   ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.strokeRect(x, y, bd.w, bd.h - bd.tall * 0.5);
   ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(x + 8, y + 8, bd.w * 0.3, 10);
+  // rooftop clutter (deterministic per building): AC box, vent, water tank on tall roofs
+  const rh = Math.abs(Math.sin(bd.x * 12.9898 + bd.y * 78.233) * 43758.5453) % 1;
+  ctx.fillStyle = 'rgba(230,225,215,0.85)'; ctx.fillRect(x + bd.w * (0.15 + rh * 0.5), y + bd.h * 0.18, 13, 10);
+  ctx.fillStyle = 'rgba(90,90,95,0.9)'; ctx.fillRect(x + bd.w * (0.55 - rh * 0.3), y + bd.h * 0.5, 9, 9);
+  if (bd.tall > 30) { ctx.fillStyle = '#8a6a34'; ctx.fillRect(x + bd.w * 0.68, y + 10, 15, 15); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x + bd.w * 0.68, y + 10, 15, 4); }
   if (bd.awning) { ctx.fillStyle = '#e0483e'; ctx.fillRect(x - 3, y + bd.h - bd.tall * 0.5 - 6, bd.w + 6, 7); }
   if (bd.name) { ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.fillText(bd.name.toUpperCase(), x + 4, y + 14); }
 }

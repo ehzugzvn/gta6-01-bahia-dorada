@@ -3,7 +3,7 @@ export const WORLD = { w: 3200, h: 2400 };
 export const VIEW = { w: 1280, h: 800 };
 export const TILE = 40;
 export const COLORS = {
-  water: '#1b6f7a', sand: '#e8c07a', grass: '#5d8a4a', road: '#3a3f46',
+  water: '#1b6f7a', sand: '#e8c07a', grass: '#5d8a4a', road: '#332f2d',
   roadLine: '#f5d76e', roofA: '#c65f3d', roofB: '#8e4a63', roofC: '#3f7d7a',
   wall: '#7a4632', palm: '#2e7d46', shadow: 'rgba(60,20,10,0.35)',
   sky: '#ff9a3c', teal: '#0e3a44', gold: '#ffd166'
